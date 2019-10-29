@@ -30,10 +30,3 @@ return the data associated with the argument name
 Method: GET
 
 Args: str:username
-
-##### rest_api/user/me
-return the data associented with the user with active session, if there is one
-
-Method: GET
-
-Args: --
