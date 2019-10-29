@@ -1,6 +1,6 @@
 from django.urls import path
 
-from rest_api.views import Register, Login, Logout, UserProfile, LoggedUserProfile
+from rest_api.views import Register, Login, Logout, UserProfile
 
 urlpatterns = [
     path(
@@ -22,15 +22,9 @@ urlpatterns = [
     ),
 
     path(
-        route="rest_api/user",
+        route="rest_api/user/",
         view=UserProfile.as_view(),
         name="user_void"
-    ),
-
-    path(
-        route="rest_api/user/me",
-        view=LoggedUserProfile.as_view(),
-        name="user_me"
     ),
 
     path(

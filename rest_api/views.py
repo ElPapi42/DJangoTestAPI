@@ -11,150 +11,116 @@ class Register(View):
     """Register New User to the Database"""
 
     def post(self, request, *args, **kwargs):
-        status = 200
-        response = []
 
         user_data = request.POST
-        
-        if(not request.user.is_authenticated):
-            if(not User.objects.filter(username=user_data["username"]).exists()):
 
-                user = User.objects.create_user(user_data["username"], user_data["email"], user_data["password"])
-                user.save()
+        #No user must be logged in while regitering new account
+        if(request.user.is_authenticated):
+            return JsonResponse({
+                "status": "unauthorized",
+                "data": "Cant register while Logged in"
+            }, safe=False, status=401)
 
-                response.append({
-                    "Status":"Success Register [Code {status}]".format(status=status), 
-                    "Username":user.username, 
-                    "eMail":user.email
-                })
-            else:
-                status = 406
-                response.append({
-                    "Status":"Failure Register [Code {status}]".format(status=status), 
-                    "Reason":"User already registered"
-                })
-        else:
-            status = 400
-            response.append({
-                "Status":"Failure Register [Code {status}]".format(status=status),  
-                "Reason":"Attemp to register new user from logged session"
-            })
+        #If user data is already on DB, avoid registration
+        if(User.objects.filter(username=user_data["username"]).exists()):
+            return JsonResponse({
+                "status": "not acceptable",
+                "data": "User already registered"
+            }, safe=False, status=406)
 
-        return JsonResponse(response, safe=False, status=status)
+        #Add new user to DB
+        user = User.objects.create_user(user_data["username"], user_data["email"], user_data["password"])
+        user.save()
+
+        #Return new user data
+        return JsonResponse({
+            "status": "ok",
+            "data": {
+                "username":user.username,
+                "email":user.email
+            },
+        }, safe=False, status=200)
 
 class Login(View):
     """Login an user to the session"""
 
     def post(self, request, *args, **kwargs):
-        status = 200
-        response = []
 
+        #Extract username and password from request
         username = request.POST["username"]
         password = request.POST["password"]
 
-        user = authenticate(request=request, username=username, password=password)
+        #Check if user credentials are valid
+        auth_user = authenticate(request=request, username=username, password=password)
+        if(not auth_user):
+            return JsonResponse({
+                "status": "unauthorized",
+                "data": "Invalid credentials"
+            }, safe=False, status=404)
 
-        if(user):
+        #Open session with the user
+        login(request, auth_user)
 
-            login(request, user)
-
-            response.append({
-                "Status":"Success Login [Code {status}]".format(status=status), 
-                "Username":user.username, 
-                "eMail":user.email
-            })
-        else:
-            status = 404
-            response.append({
-                "Status":"Failure Login [Code {status}]".format(status=status), 
-                "Reason":"Submitted data invalid, check again"
-            })
-
-        return JsonResponse(response, safe=False, status=status)
+        #Return new user data
+        return JsonResponse({
+            "status": "ok",
+            "data": {
+                "username":auth_user.username,
+                "email":auth_user.email
+            },
+        }, safe=False, status=200)
 
 class Logout(View):
     "Logout the user, if thereis one user loged in"
 
     def post(self, request, *args, **kwargs):
-        status = 200
-        response = []
 
-        if(request.user.is_authenticated):
-            user = User.objects.get(id=request.user.id)   
-            logout(request)
-            
-            response.append({
-                "Status":"Success Logout [Code {status}]".format(status=status), 
-                "Username":user.username, 
-                "eMail":user.email
-            })
-        else:
-            status = 401
-            response.append({
-                "Status":"Failure Logout [Code {status}]".format(status=status), 
-                "Reason":"You must Login for be able to Logout"
-            })
+        #Check if the user is not auth
+        if(not request.user.is_authenticated):
+            return JsonResponse({
+                "status": "unauthorized",
+                "data": "Require login"
+            }, safe=False, status=401)
 
-        return JsonResponse(response, safe=False, status=status)
+        user = User.objects.get(id=request.user.id)   
+        logout(request)
 
-class LoggedUserProfile(View):
-    """Return details of the user logged currently in the session"""
-
-    def get(self, request, username=None, *args, **kwargs):
-        status = 200
-        response = []
-
-        if(request.user.is_authenticated):
-            user = request.user
-
-            response.append({
-                "Status":"Success UserRetreived [Code {status}]".format(status=status), 
-                "Username":user.username, 
-                "eMail":user.email
-            })
-        else:
-            status = 401
-            response.append({
-                "Status":"Failure [Code {status}]".format(status=status), 
-                "Reason":"You must be logged in for see this content"
-            })
-
-        return JsonResponse(response, safe=False, status=status)
+        #Return new user data
+        return JsonResponse({
+            "status": "ok",
+            "data": {
+                "username":user.username,
+                "email":user.email
+            },
+        }, safe=False, status=200)
 
 class UserProfile(View):
     """Return details of public profile of an user"""
 
     def get(self, request, username=None, *args, **kwargs):
-        status = 200
-        response = []
 
-        if(request.user.is_authenticated):
+        #Check if the user is not auth
+        if(not request.user.is_authenticated):
+            return JsonResponse({
+                "status": "unauthorized",
+                "data": "Login for access"
+            }, safe=False, status=401)
 
-            if(User.objects.filter(username=username).exists()):
+        #Check is requested user exists
+        if(not User.objects.filter(username=username).exists()):
+            return JsonResponse({
+                "status": "not found",
+                "data": "User not found"
+            }, safe=False, status=404)
 
-                user = User.objects.get_by_natural_key(username=username)
+        #Get reference
+        user = User.objects.get_by_natural_key(username=username)
 
-                if(user == request.user):
-                    response = redirect("rest_api:user_me")
-                    return response
-                else:
-                    response.append({
-                        "Status":"Success UserRetreived [Code {status}]".format(status=status), 
-                        "Username":user.username, 
-                        "eMail":user.email
-                    })
-            else:
-                status = 404
-                response.append({
-                    "Status":"Failure [Code {status}]".format(status=status), 
-                    "Reason":"Requested user not found"
-                })
-        else:
-            status = 401
-            response.append({
-                "Status":"Failure [Code {status}]".format(status=status), 
-                "Reason":"You must be logged in for see this content"
-            })
-        
-        return JsonResponse(response, safe=False, status=status)
-
+        #Return requested user data
+        return JsonResponse({
+            "status": "ok",
+            "data": {
+                "username":user.username,
+                "email":user.email
+            },
+        }, safe=False, status=200)
