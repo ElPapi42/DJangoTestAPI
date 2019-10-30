@@ -16,8 +16,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    path("", view=include(("rest_api.urls", "rest_api"), namespace="rest_api"))
+    path("", view=include(("rest_api.urls", "rest_api"), namespace="rest_api")),
+    path("", view=include(("graphql_api.urls", "graphql_api"), namespace="graphql_api")),
 ]
